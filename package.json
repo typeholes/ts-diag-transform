@@ -1,0 +1,23 @@
+{
+  "name": "ts-diag-transform`",
+  "version": "1.0.0",
+  "description": "implement structured arguments in ts via ts api transforms",
+  "main": "index.js",
+  "scripts": {
+    "build": "esbuild --bundle --outdir=out --sourcemap --platform=node src/index.ts",
+    "watch": "esbuild --watch --bundle --outdir=out --sourcemap --platform=node src/index.ts",
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "step1": "npm run build && node   out/index.js ~/projects/TypeScript --configFile ~/projects/TypeScript/src/compiler/tsconfig.json --StructuredDiagnostics"
+  },
+  "author": "typeholes",
+  "license": "MIT",
+  "devDependencies": {
+    "@types/node": "^20.11.4",
+    "eslint": "^8.56.0",
+    "prettier": "^3.2.2"
+  },
+  "dependencies": {
+    "cmd-ts": "^0.13.0",
+    "typescript": "^5.4.5"
+  }
+}
