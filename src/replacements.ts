@@ -1,16 +1,5 @@
-import {
-   SourceFile,
-   TextChangeRange,
-   textChangeRangeNewSpan,
-   type TextChange,
-} from 'typescript';
-
 import { writeFileSync } from 'fs';
-
-/***** Do not use SourceFile.update
- * keep the new text here and write it to the file when done with replacements
- * that way the watcher can deal with all the low level stuff
- */
+import { SourceFile } from 'typescript';
 
 type Change = { start: number; end: number; newText: string };
 
@@ -23,6 +12,7 @@ export function mkReplacement(sourceFile: SourceFile) {
       const length = 1 + end - start;
       const replacement: Change = { start, end, newText };
       if (!replacements.has(fileName)) {
+         console.log(`at least one replacement in ${fileName}`);
          replacements.set(fileName, [replacement]);
       } else {
          replacements.get(fileName)!.push(replacement);
@@ -33,7 +23,9 @@ export function mkReplacement(sourceFile: SourceFile) {
 export function doReplacements(sourceFile: SourceFile): void {
    const fileName = sourceFile.fileName;
    const changes = replacements.get(fileName);
-   if (!changes) return;
+   if (!changes || changes.length === 0) return;
+
+   console.log(`doing replacements in ${sourceFile.fileName}`);
 
    if (!sources.has(fileName)) {
       sources.set(fileName, sourceFile.getFullText());
@@ -59,16 +51,17 @@ export function doReplacements(sourceFile: SourceFile): void {
          source.slice(change.end);
    });
 
-   replacements.delete(fileName);
+   replacements.set(fileName, []);
    sources.set(fileName, source);
 }
 
 export function writeFiles() {
-   if (replacements.size > 0) {
+   if ([...replacements.values()].some((arr) => arr.length > 0)) {
       throw new Error('attempt to write files with pending replacements');
    }
 
    for (let [fileName, source] of sources.entries()) {
+      console.log(`writing file ${fileName}`);
       writeFileSync(fileName, source);
       sources.delete(fileName);
    }

@@ -1,65 +1,33 @@
+export const stepName = 'StructuredDiagnostics';
+
 import * as ts from 'typescript';
-import { transformations } from './transformations';
-import { doReplacements, writeFiles, mkReplacement } from '../replacements';
+import { mkTransform, addSourceUpdate } from '../sourceUpdate';
 
-export const name = 'StructuredDiagnostics';
-
-let typesChange: (start: number, end: number, newText: string) => void;
-let checkerChange: (start: number, end: number, newText: string) => void;
-let utilitiesChange: (start: number, end: number, newText: string) => void;
-
-transformations['StructuredDiagnostics'] = (
-   program: ts.SemanticDiagnosticsBuilderProgram
-) => {
-   const typesSourceFile = program.getSourceFile('src/compiler/types.ts');
-   if (!typesSourceFile) throw new Error('could not find checker');
-   typesChange = mkReplacement(typesSourceFile);
-   ts.transform(typesSourceFile, [typesTransformer]);
-   doReplacements(typesSourceFile);
-
-   const checkerSourceFile = program.getSourceFile('src/compiler/checker.ts');
-   if (!checkerSourceFile) throw new Error('could not find checker');
-   checkerChange = mkReplacement(checkerSourceFile);
-   ts.transform(checkerSourceFile, [checkerTransformer]);
-   doReplacements(checkerSourceFile);
-
-   const utilitiesSourceFile = program.getSourceFile(
-      'src/compiler/utilities.ts'
-   );
-   if (!utilitiesSourceFile) throw new Error('could not find utilities');
-   utilitiesChange = mkReplacement(utilitiesSourceFile);
-   ts.transform(utilitiesSourceFile, [utilitiesTransformer]);
-   doReplacements(utilitiesSourceFile);
-
-   writeFiles();
-};
-
-const typesTransformer: ts.TransformerFactory<ts.Node> = (context) => {
-   return (sourceFile) => {
-      const visitor = (node: ts.Node): ts.Node => {
+addSourceUpdate(stepName, {
+   fileName: 'src/compiler/types.ts',
+   transformer: mkTransform((replacer) => {
+      return (node: ts.Node) => {
          if (ts.isTypeAliasDeclaration(node)) {
             if (node.name.escapedText === 'DiagnosticArguments') {
-               typesChange(...subNode(node, diagArgsSrc));
+               replacer.node(node, diagArgsSrc);
             }
          }
-
-         return ts.visitEachChild(node, visitor, context);
       };
+   }),
+});
 
-      return ts.visitNode(sourceFile, visitor);
-   };
-};
-
-const checkerTransformer: ts.TransformerFactory<ts.Node> = (context) => {
-   const sub = (node: ts.Node, newText: string) =>
-      checkerChange(...subNode(node, newText));
-   return (sourceFile) => {
-      const visitor = (node: ts.Node): ts.Node => {
+addSourceUpdate(stepName, {
+   fileName: 'src/compiler/checker.ts',
+   transformer: mkTransform((replacer) => {
+      return (node: ts.Node) => {
          if (
             ts.isImportSpecifier(node) &&
             node.name.escapedText === 'createDiagnosticCollection'
          ) {
-            sub(node, 'createDiagnosticArgument, createDiagnosticCollection');
+            replacer.node(
+               node,
+               'createDiagnosticArgument, createDiagnosticCollection'
+            );
          }
 
          if (
@@ -76,56 +44,48 @@ const checkerTransformer: ts.TransformerFactory<ts.Node> = (context) => {
                ts.isIdentifier(node.arguments[2]) &&
                node.arguments[2].escapedText === 'targetType'
             ) {
-               sub(
+               replacer.node(
                   node.arguments[1],
                   `createDiagnosticArgument(generalizedSourceType, generalizedSource, "Type")`
                );
-               sub(
+               replacer.node(
                   node.arguments[2],
                   `createDiagnosticArgument(targetType, target, "Type")`
                );
             }
          }
-
-         return ts.visitEachChild(node, visitor, context);
+         // return undefined;
       };
+   }),
+});
 
-      return ts.visitNode(sourceFile, visitor);
-   };
-};
-
-const utilitiesTransformer: ts.TransformerFactory<ts.Node> = (context) => {
-   const sub = (node: ts.Node, newText: string) =>
-      utilitiesChange(...subNode(node, newText));
-   return (sourceFile) => {
-      const visitor = (node: ts.Node): ts.Node => {
+addSourceUpdate(stepName, {
+   fileName: 'src/compiler/utilities.ts',
+   transformer: mkTransform((replacer) => {
+      return (node: ts.Node) => {
          if (
             ts.isImportSpecifier(node) &&
             node.name.escapedText === 'SuperCall'
          ) {
-            sub(node, 'StructuredDiagnosticArgument, SuperCall ');
+            replacer.node(node, 'StructuredDiagnosticArgument, SuperCall ');
          }
 
          if (
             ts.isImportSpecifier(node) &&
             node.name.escapedText === 'DiagnosticArguments'
          ) {
-            sub(node, 'DiagnosticArgument, DiagnosticArguments ');
+            replacer.node(node, 'DiagnosticArgument, DiagnosticArguments ');
          }
 
          if (
             ts.isFunctionDeclaration(node) &&
             node?.name?.escapedText === 'formatStringFromArgs'
          ) {
-            sub(node, formatStringSrc);
+            replacer.node(node, formatStringSrc);
          }
-
-         return ts.visitEachChild(node, visitor, context);
       };
-
-      return ts.visitNode(sourceFile, visitor);
-   };
-};
+   }),
+});
 
 const diagArgsSrc = `
 export interface StructuredDiagnosticArgument {

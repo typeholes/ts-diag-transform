@@ -4,10 +4,12 @@
   "description": "implement structured arguments in ts via ts api transforms",
   "main": "index.js",
   "scripts": {
-    "build": "esbuild --bundle --outdir=out --sourcemap --platform=node src/index.ts",
-    "watch": "esbuild --watch --bundle --outdir=out --sourcemap --platform=node src/index.ts",
+    "build": "tsc",
     "test": "echo \"Error: no test specified\" && exit 1",
-    "step1": "npm run build && node   out/index.js ~/projects/TypeScript --configFile ~/projects/TypeScript/src/compiler/tsconfig.json --StructuredDiagnostics"
+    "allSteps": "tsc && node out/index.js ~/projects/TypeScript/ --configFile ~/projects/TypeScript/src/compiler/tsconfig.json ",
+    "step1": "tsc && node out/index.js ~/projects/TypeScript/ --configFile ~/projects/TypeScript/src/compiler/tsconfig.json --fromStep=StructuredDiagnostics --toStep=StructuredDiagnostics",
+    "debug1": "tsc && node --inspect-brk out/index.js ~/projects/TypeScript/ --configFile ~/projects/TypeScript/src/compiler/tsconfig.json --fromStep=StructuredDiagnostics --toStep=StructuredDiagnostics",
+    "step2": "tsc && node out/index.js ~/projects/TypeScript/ --configFile ~/projects/TypeScript/src/compiler/tsconfig.json --fromStep=PropagateArguments --toStep=PropagateArguments"
   },
   "author": "typeholes",
   "license": "MIT",
